@@ -3,6 +3,11 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+### Added
+- Annotations: `DiffAnnotation` attaches host-rendered HTML or text beneath a diff line, `DiffView` and `DiffViewController` accept an `annotations` list, `DiffViewController.update(annotations:)` updates them in place, and `DiffEvent.didActivateAnnotation` reports clicks on `data-action` elements.
+- Bridge protocol: `renderDocument` carries `annotations`, new `updateAnnotations` command and `annotationActivated` event.
+- Example app: sample discussion thread with Reply and Resolve actions.
+
 ### Fixed
 - Touch drag on the line-number gutter now extends the selection on iPad. The gutter opts out of touch scrolling (`touch-action: none`) and the renderer releases the implicit pointer capture WebKit grants touch pointers, so `LineSelectionManager` tracks the finger instead of staying pinned to the starting line. A `pointercancel` during a gutter drag now clears the selection and reports `didChangeSelection(nil)` instead of leaving the host out of sync.
 
