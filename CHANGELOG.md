@@ -3,6 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+### Fixed
+- Text no longer grows on iPhone in landscape. WebKit's text autosizing enlarged diff rows once the viewport widened; the renderer page now sets `-webkit-text-size-adjust: 100%` so rows keep the host-requested size.
 
 ## [0.2.0] - 2026-03-23
 ### Changed
