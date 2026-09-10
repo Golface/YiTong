@@ -14,6 +14,16 @@ body,
   min-height: 100%;
 }
 
+/*
+ * WebKit enlarges text it considers "primary" when the viewport is wider than
+ * the layout it was sized for (iPhone landscape). Diff rows are laid out in
+ * monospace columns and must keep the size the host asked for.
+ */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   background: var(--page-background-light);
   color: var(--page-text-light);
