@@ -22,7 +22,8 @@ enum YiTongPublicModelAdapter {
             oldContents: $0.oldContents,
             newContents: $0.newContents
           )
-        }
+        },
+        folds: document.folds.isEmpty ? nil : document.folds.map(makeBridgeFold)
       ),
       configuration: makeBridgeConfiguration(
         from: configuration,
@@ -51,6 +52,16 @@ enum YiTongPublicModelAdapter {
         }
         return nil
       }()
+    )
+  }
+
+  static func makeBridgeFold(from fold: DiffFold) -> YiTongBridgeFoldPayload {
+    YiTongBridgeFoldPayload(
+      fileIndex: fold.fileIndex,
+      collapsed: fold.collapsed,
+      label: fold.label,
+      detail: fold.detail,
+      tone: fold.tone
     )
   }
 
@@ -193,6 +204,8 @@ enum YiTongPublicModelAdapter {
           lineNumber: payload.lineNumber
         )
       )
+    case .didToggleFold(let payload):
+      return .didToggleFold(fileIndex: payload.fileIndex, collapsed: payload.collapsed)
     case .didFail(let code, let message):
       return .didFail(DiffError(code: code, message: message))
     }

@@ -14,6 +14,7 @@ public enum YiTongBridgeIncomingType: String, Codable, Sendable {
   case lineActivated
   case selectionChanged
   case annotationActivated
+  case foldToggled
 }
 
 public struct YiTongBridgeOutgoingEnvelope<Payload: Codable & Equatable & Sendable>: Codable, Equatable, Sendable {
@@ -178,22 +179,51 @@ public struct YiTongBridgeFilePayload: Codable, Equatable, Sendable {
   }
 }
 
+/// A collapsible header placed above one rendered file.
+///
+/// `tone` is opaque to the renderer and only exposed as `data-tone`.
+public struct YiTongBridgeFoldPayload: Codable, Equatable, Sendable {
+  public var fileIndex: Int
+  public var collapsed: Bool
+  public var label: String
+  public var detail: String?
+  public var tone: String?
+
+  public init(
+    fileIndex: Int,
+    collapsed: Bool,
+    label: String,
+    detail: String? = nil,
+    tone: String? = nil
+  ) {
+    self.fileIndex = fileIndex
+    self.collapsed = collapsed
+    self.label = label
+    self.detail = detail
+    self.tone = tone
+  }
+}
+
 public struct YiTongBridgeDocumentPayload: Codable, Equatable, Sendable {
   public var identifier: String
   public var title: String?
   public var patch: String?
   public var files: [YiTongBridgeFilePayload]?
+  /// Omitted from the wire when `nil`, so documents without folds encode exactly as before.
+  public var folds: [YiTongBridgeFoldPayload]?
 
   public init(
     identifier: String,
     title: String?,
     patch: String? = nil,
-    files: [YiTongBridgeFilePayload]? = nil
+    files: [YiTongBridgeFilePayload]? = nil,
+    folds: [YiTongBridgeFoldPayload]? = nil
   ) {
     self.identifier = identifier
     self.title = title
     self.patch = patch
     self.files = files
+    self.folds = folds
   }
 }
 
@@ -410,6 +440,16 @@ public struct YiTongAnnotationActivatedPayload: Codable, Equatable, Sendable {
     self.fileIndex = fileIndex
     self.side = side
     self.lineNumber = lineNumber
+  }
+}
+
+public struct YiTongFoldToggledPayload: Codable, Equatable, Sendable {
+  public var fileIndex: Int
+  public var collapsed: Bool
+
+  public init(fileIndex: Int, collapsed: Bool) {
+    self.fileIndex = fileIndex
+    self.collapsed = collapsed
   }
 }
 

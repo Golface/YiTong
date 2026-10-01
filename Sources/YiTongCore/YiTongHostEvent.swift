@@ -7,6 +7,7 @@ public enum YiTongHostEvent: Equatable, Sendable {
   case didActivateLine(YiTongLineActivatedPayload)
   case didChangeSelection(YiTongSelectionPayload?)
   case didActivateAnnotation(YiTongAnnotationActivatedPayload)
+  case didToggleFold(YiTongFoldToggledPayload)
   case didFail(code: String, message: String)
 }
 

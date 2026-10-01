@@ -345,6 +345,76 @@ final class YiTongBridgeTests: XCTestCase {
     )
   }
 
+
+  func testRenderDocumentEnvelopeRoundTripsFolds() throws {
+    let message = YiTongBridgeOutgoingEnvelope(
+      id: "msg-folded",
+      type: .renderDocument,
+      payload: YiTongRenderDocumentPayload(
+        document: YiTongBridgeDocumentPayload(
+          identifier: "document-folded",
+          title: nil,
+          patch: "diff --git a/a.txt b/a.txt",
+          folds: [
+            YiTongBridgeFoldPayload(fileIndex: 0, collapsed: true, label: "L88–90 · +3 −3", detail: "R1 · docs", tone: "R1"),
+            YiTongBridgeFoldPayload(fileIndex: 1, collapsed: false, label: "L10–24 · +12 −2"),
+          ]
+        ),
+        configuration: makeConfiguration()
+      )
+    )
+
+    let data = try YiTongBridgeCodec.encode(message)
+    let decoded = try YiTongBridgeCodec.decode(
+      YiTongBridgeOutgoingEnvelope<YiTongRenderDocumentPayload>.self,
+      from: data
+    )
+    XCTAssertEqual(decoded, message)
+
+    let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    let payload = try XCTUnwrap(object["payload"] as? [String: Any])
+    let document = try XCTUnwrap(payload["document"] as? [String: Any])
+    let folds = try XCTUnwrap(document["folds"] as? [[String: Any]])
+    XCTAssertEqual(folds.first?["fileIndex"] as? Int, 0)
+    XCTAssertEqual(folds.first?["collapsed"] as? Bool, true)
+    XCTAssertEqual(folds.first?["label"] as? String, "L88–90 · +3 −3")
+    XCTAssertEqual(folds.first?["detail"] as? String, "R1 · docs")
+    XCTAssertEqual(folds.first?["tone"] as? String, "R1")
+    XCTAssertNil(folds.last?["detail"])
+  }
+
+  func testRenderDocumentWithoutFoldsOmitsFoldsKey() throws {
+    let payload = YiTongRenderDocumentPayload(
+      document: YiTongBridgeDocumentPayload(identifier: "document-plain", title: nil, patch: "diff"),
+      configuration: makeConfiguration()
+    )
+
+    let data = try YiTongBridgeCodec.encode(payload)
+    let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    let document = try XCTUnwrap(object["document"] as? [String: Any])
+
+    XCTAssertNil(document["folds"])
+  }
+
+  func testFoldToggledEnvelopeDecodes() throws {
+    let json = """
+    {
+      "protocolVersion": 1,
+      "id": "evt-9",
+      "type": "foldToggled",
+      "payload": { "fileIndex": 3, "collapsed": false }
+    }
+    """
+
+    let decoded = try YiTongBridgeCodec.decode(
+      YiTongBridgeIncomingEnvelope<YiTongFoldToggledPayload>.self,
+      from: Data(json.utf8)
+    )
+
+    XCTAssertEqual(decoded.type, .foldToggled)
+    XCTAssertEqual(decoded.payload, YiTongFoldToggledPayload(fileIndex: 3, collapsed: false))
+  }
+
   private func makeConfiguration() -> YiTongBridgeConfigurationPayload {
     YiTongBridgeConfigurationPayload(
       diffStyle: .split,

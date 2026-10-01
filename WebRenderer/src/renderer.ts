@@ -6,7 +6,15 @@ import {
   groupAnnotationsByFile,
   type LineAnnotationForFile,
 } from "./annotationModel";
-import { postAnnotationActivated, postLineActivated, postRenderStateChanged, postSelectionChanged } from "./bridge";
+import {
+  postAnnotationActivated,
+  postFoldToggled,
+  postLineActivated,
+  postRenderStateChanged,
+  postSelectionChanged,
+} from "./bridge";
+import { applyFoldHeaderState, createFoldHeaderElement } from "./foldContent";
+import { buildFoldStates, isFileCollapsed, toggleFold, type FoldStates } from "./foldModel";
 import type {
   AnnotationPayload,
   Envelope,
@@ -31,10 +39,12 @@ interface RendererState {
   configuration?: RenderConfigurationPayload;
   annotations: AnnotationPayload[];
   renderedFiles: RenderedDocumentFile[];
+  folds: FoldStates;
 }
 
-const state: RendererState = { annotations: [], renderedFiles: [] };
-const instances: FileDiff<AnnotationPayload>[] = [];
+const state: RendererState = { annotations: [], renderedFiles: [], folds: new Map() };
+// Collapsed files have no instance until the viewer expands them.
+const instances = new Map<number, FileDiff<AnnotationPayload>>();
 let suppressesSelectionEvents = false;
 let annotationClickListenerInstalled = false;
 
@@ -54,10 +64,10 @@ function getAppRoot(): HTMLDivElement {
 }
 
 function clearInstances() {
-  for (const instance of instances) {
+  for (const instance of instances.values()) {
     instance.cleanUp();
   }
-  instances.length = 0;
+  instances.clear();
 }
 
 function applyAppearance(appearance: "light" | "dark") {
@@ -166,7 +176,7 @@ function updateAnnotations(payload: UpdateAnnotationsPayload) {
 
   // Re-rendering without `forceRender` reuses the highlight cache, so only the
   // annotation slots and their content are rebuilt.
-  for (const [fileIndex, instance] of instances.entries()) {
+  for (const [fileIndex, instance] of instances) {
     instance.render({
       fileDiff: state.renderedFiles[fileIndex].fileDiff,
       lineAnnotations: annotationsForFile(grouped, fileIndex),
@@ -174,7 +184,62 @@ function updateAnnotations(payload: UpdateAnnotationsPayload) {
   }
 }
 
-function renderDocument(payload: RenderDocumentPayload) {
+function mountFileDiff(fileIndex: number, container: HTMLElement, lineAnnotations: LineAnnotationForFile[]) {
+  const renderedFile = state.renderedFiles[fileIndex];
+  const context: RenderedFileContext = {
+    fileIndex,
+    oldPath: renderedFile.oldPath,
+    newPath: renderedFile.newPath,
+  };
+  const instance = new FileDiff<AnnotationPayload>({
+    ...toDiffOptions(state.configuration!),
+    onLineClick(props) {
+      postLineActivated(buildLineActivatedPayload(context, props));
+    },
+    onLineSelected(range) {
+      if (suppressesSelectionEvents) {
+        return;
+      }
+
+      postSelectionChanged(buildSelectionChangedPayload(context, range));
+    },
+    renderAnnotation,
+  });
+  instance.render({
+    fileDiff: renderedFile.fileDiff,
+    containerWrapper: container,
+    lineAnnotations,
+  });
+  instances.set(fileIndex, instance);
+}
+
+function unmountFileDiff(fileIndex: number, container: HTMLElement) {
+  instances.get(fileIndex)?.cleanUp();
+  instances.delete(fileIndex);
+  container.replaceChildren();
+}
+
+function toggleFileFold(fileIndex: number, header: HTMLElement, body: HTMLElement) {
+  const toggled = toggleFold(state.folds, fileIndex);
+  if (toggled == null) {
+    return;
+  }
+
+  applyFoldHeaderState(header, toggled.collapsed);
+  if (toggled.collapsed) {
+    unmountFileDiff(fileIndex, body);
+  } else {
+    const grouped = groupAnnotationsByFile(state.annotations, state.renderedFiles.length);
+    mountFileDiff(fileIndex, body, annotationsForFile(grouped, fileIndex));
+  }
+  postFoldToggled(toggled);
+}
+
+/**
+ * `previousFolds` is passed when re-rendering the same document so the
+ * viewer's own fold toggles survive; a new document starts from its payload.
+ */
+function renderDocument(payload: RenderDocumentPayload, previousFolds?: FoldStates) {
   const root = getAppRoot();
   const renderedFiles = buildRenderedFiles(payload.document);
   state.document = payload.document;
@@ -182,6 +247,7 @@ function renderDocument(payload: RenderDocumentPayload) {
   state.configuration = payload.configuration;
   state.annotations = payload.annotations ?? [];
   state.renderedFiles = renderedFiles;
+  state.folds = buildFoldStates(payload.document.folds, renderedFiles.length, previousFolds);
   const groupedAnnotations = groupAnnotationsByFile(state.annotations, renderedFiles.length);
   applyAppearance(payload.configuration.resolvedAppearance);
   installAnnotationClickListener(root);
@@ -194,36 +260,24 @@ function renderDocument(payload: RenderDocumentPayload) {
   clearInstances();
   root.innerHTML = "";
 
-  for (const [fileIndex, renderedFile] of renderedFiles.entries()) {
+  for (const fileIndex of renderedFiles.keys()) {
     const section = document.createElement("section");
     section.className = "diff-file";
     root.appendChild(section);
 
-    const context: RenderedFileContext = {
-      fileIndex,
-      oldPath: renderedFile.oldPath,
-      newPath: renderedFile.newPath,
-    };
-    const instance = new FileDiff<AnnotationPayload>({
-      ...toDiffOptions(payload.configuration),
-      onLineClick(props) {
-        postLineActivated(buildLineActivatedPayload(context, props));
-      },
-      onLineSelected(range) {
-        if (suppressesSelectionEvents) {
-          return;
-        }
+    const fold = state.folds.get(fileIndex);
+    if (fold == null) {
+      mountFileDiff(fileIndex, section, annotationsForFile(groupedAnnotations, fileIndex));
+      continue;
+    }
 
-        postSelectionChanged(buildSelectionChangedPayload(context, range));
-      },
-      renderAnnotation,
-    });
-    instance.render({
-      fileDiff: renderedFile.fileDiff,
-      containerWrapper: section,
-      lineAnnotations: annotationsForFile(groupedAnnotations, fileIndex),
-    });
-    instances.push(instance);
+    const body = document.createElement("div");
+    body.className = "diff-fold-body";
+    const header = createFoldHeaderElement(fold, () => toggleFileFold(fileIndex, header, body));
+    section.append(header, body);
+    if (!isFileCollapsed(state.folds, fileIndex)) {
+      mountFileDiff(fileIndex, body, annotationsForFile(groupedAnnotations, fileIndex));
+    }
   }
 
   postRenderStateChanged({
@@ -246,7 +300,7 @@ export function cancelActiveSelection(event: { pointerId: number; pointerType: s
     document.dispatchEvent(
       new PointerEvent("pointerup", { pointerId: event.pointerId, pointerType: event.pointerType }),
     );
-    for (const instance of instances) {
+    for (const instance of instances.values()) {
       instance.setSelectedLines(null);
     }
   } finally {
@@ -274,7 +328,7 @@ export async function handleIncomingMessage(envelope: Envelope<IncomingMessageTy
         document: state.document,
         configuration: envelope.payload as RenderConfigurationPayload,
         annotations: state.annotations,
-      });
+      }, state.folds);
       return;
     }
     case "updateAnnotations":
@@ -292,6 +346,7 @@ export async function handleIncomingMessage(envelope: Envelope<IncomingMessageTy
       state.configuration = undefined;
       state.annotations = [];
       state.renderedFiles = [];
+      state.folds = new Map();
       return;
   }
 }

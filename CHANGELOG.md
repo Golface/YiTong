@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 - Annotations: `DiffAnnotation` attaches host-rendered HTML or text beneath a diff line, `DiffView` and `DiffViewController` accept an `annotations` list, `DiffViewController.update(annotations:)` updates them in place, and `DiffEvent.didActivateAnnotation` reports clicks on `data-action` elements.
 - Bridge protocol: `renderDocument` carries `annotations`, new `updateAnnotations` command and `annotationActivated` event.
 - Example app: sample discussion thread with Reply and Resolve actions.
+- Folds: `DiffFold` places a collapsible header above a file, `DiffDocument` accepts a `folds` list, and `DiffEvent.didToggleFold` reports when the viewer expands or collapses one. Collapsed files are rendered only once expanded.
+- Bridge protocol: `renderDocument` documents carry optional `folds`, new `foldToggled` event.
 
 ### Fixed
 - Text no longer grows on iPhone in landscape. WebKit's text autosizing enlarged diff rows once the viewport widened; the renderer page now sets `-webkit-text-size-adjust: 100%` so rows keep the host-requested size.

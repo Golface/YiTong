@@ -177,6 +177,8 @@ DiffView(
       print(selection as Any)
     case .didActivateAnnotation(let action):
       print(action.annotationID, action.action)
+    case .didToggleFold(let fileIndex, let collapsed):
+      print(fileIndex, collapsed)
     case .didFail(let error):
       print(error.code, error.message)
     }
@@ -222,6 +224,37 @@ DiffView(
 - Any element inside the HTML carrying a `data-action` attribute reports clicks through `DiffEvent.didActivateAnnotation`, echoing the annotation's `id`, `kind` and line coordinates alongside the action string.
 - Changing only `annotations` on `DiffView`, or calling `DiffViewController.update(annotations:)`, updates the annotations in place without re-rendering the document.
 - `annotations` defaults to an empty list, so existing call sites need no changes.
+
+### Folds
+
+Folds put a collapsible header above individual files of the document. A collapsed file is not rendered until the viewer expands it, which keeps large reviews cheap when the host splits a patch into many small files (for example one per hunk) and folds the trivial ones.
+
+```swift
+import YiTong
+
+let document = DiffDocument(
+  patch: patch,
+  folds: [
+    DiffFold(fileIndex: 0, collapsed: true, label: "L88–90 · +3 −3", detail: "Docs only", tone: "minor"),
+    DiffFold(fileIndex: 1, collapsed: false, label: "L10–24 · +12 −2"),
+  ]
+)
+
+DiffView(
+  document: document,
+  onEvent: { event in
+    if case .didToggleFold(let fileIndex, let collapsed) = event {
+      // The viewer expanded or collapsed file `fileIndex`.
+    }
+  }
+)
+```
+
+- `fileIndex` addresses files in render order, the same index `DiffLineReference` and `DiffAnnotation` use. Several `diff --git` sections for the same path stay separate files, so a patch split per hunk keeps one index per hunk.
+- `label` and `detail` are inserted as plain text. `tone` is not interpreted; the header exposes it as `data-tone` for host styling.
+- The viewer's toggles survive configuration changes and annotation updates. Changing the document, including its `folds`, starts again from each fold's `collapsed` value.
+- Annotations on a collapsed file appear once it is expanded.
+- `folds` defaults to an empty list, and files without a fold render exactly as before.
 
 ## Configuration
 

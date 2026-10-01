@@ -88,3 +88,85 @@ body {
 .yitong-annotation [data-action] {
   cursor: pointer;
 }
+
+/*
+ * Header row for a file the host made collapsible. The row height stays fixed
+ * so a stack of collapsed files reads as an even list; long labels truncate.
+ */
+.diff-fold {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--page-text-light);
+  background: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.diff-fold:hover {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.diff-fold:focus-visible {
+  outline: 2px solid rgba(0, 122, 255, 0.6);
+  outline-offset: -2px;
+}
+
+.diff-fold[data-collapsed="false"] {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.diff-fold-indicator {
+  flex: none;
+  width: 10px;
+  opacity: 0.6;
+}
+
+.diff-fold-label {
+  flex: none;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.diff-fold-detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.6;
+}
+
+:root[data-appearance="dark"] .diff-fold {
+  color: var(--page-text-dark);
+  background: rgba(0, 0, 0, 0.32);
+}
+
+:root[data-appearance="dark"] .diff-fold:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+:root[data-appearance="dark"] .diff-fold[data-collapsed="false"] {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-appearance="light"]) .diff-fold {
+    color: var(--page-text-dark);
+    background: rgba(0, 0, 0, 0.32);
+  }
+
+  :root:not([data-appearance="light"]) .diff-fold:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  :root:not([data-appearance="light"]) .diff-fold[data-collapsed="false"] {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+}

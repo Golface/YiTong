@@ -117,4 +117,33 @@ describe("buildRenderedFiles", () => {
     expect(parseDiffFromFile).not.toHaveBeenCalled();
     expect(renderedFiles).toHaveLength(2);
   });
+
+  it("keeps pseudo-files that share a path as separate files in patch order", () => {
+    parsePatchFiles.mockReturnValue([
+      {
+        files: [
+          { name: "Sources/App.swift", prevName: "Sources/App.swift", hunks: [{ additionStart: 10 }] },
+          { name: "Sources/App.swift", prevName: "Sources/App.swift", hunks: [{ additionStart: 40 }] },
+          { name: "Sources/App.swift", prevName: "Sources/App.swift", hunks: [{ additionStart: 90 }] },
+        ],
+      },
+    ]);
+
+    const renderedFiles = buildRenderedFiles({
+      identifier: "document-pseudo-files",
+      patch: "diff --git a/Sources/App.swift b/Sources/App.swift",
+    });
+
+    expect(renderedFiles).toHaveLength(3);
+    expect(renderedFiles.map((file) => file.newPath)).toEqual([
+      "Sources/App.swift",
+      "Sources/App.swift",
+      "Sources/App.swift",
+    ]);
+    expect(renderedFiles.map((file) => file.fileDiff.hunks[0])).toEqual([
+      { additionStart: 10 },
+      { additionStart: 40 },
+      { additionStart: 90 },
+    ]);
+  });
 });

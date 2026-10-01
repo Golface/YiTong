@@ -48,7 +48,8 @@ struct YiTongRenderRequestPlanner {
             identifier: request.document.identifier,
             title: request.document.title,
             patch: request.document.patch,
-            files: nil
+            files: nil,
+            folds: request.document.folds
           ),
           configuration: request.configuration,
           annotations: request.annotations

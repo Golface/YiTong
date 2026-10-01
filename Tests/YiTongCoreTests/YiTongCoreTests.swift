@@ -463,4 +463,24 @@ final class YiTongCoreTests: XCTestCase {
     XCTAssertNil(planned.document.files)
     XCTAssertEqual(planned.annotations, request.annotations)
   }
+
+  func testRenderRequestPlannerKeepsFoldsWhenFallingBackToPatch() {
+    var request = makeFileRequest(
+      files: [
+        YiTongBridgeFilePayload(oldPath: "a.txt", newPath: "a.txt", oldContents: "old", newContents: "new"),
+      ]
+    )
+    request.document.folds = [YiTongBridgeFoldPayload(fileIndex: 0, collapsed: true, label: "L1–1 · +1 −1")]
+
+    let result = YiTongRenderRequestPlanner.plan(
+      request,
+      limits: YiTongRenderRequestPlanner.Limits(maxTotalBytes: 1, maxFileBytes: 1, maxFiles: 10)
+    )
+
+    guard case .success(let planned, _) = result else {
+      return XCTFail("Expected patch fallback, got \(result)")
+    }
+    XCTAssertNil(planned.document.files)
+    XCTAssertEqual(planned.document.folds, request.document.folds)
+  }
 }

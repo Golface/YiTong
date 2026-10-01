@@ -260,6 +260,18 @@ public final class YiTongWebViewHost: NSObject {
     }
   }
 
+  private func handleFoldToggled(_ data: Data) {
+    do {
+      let envelope = try YiTongBridgeCodec.decode(
+        YiTongBridgeIncomingEnvelope<YiTongFoldToggledPayload>.self,
+        from: data
+      )
+      eventHandler?(.didToggleFold(envelope.payload))
+    } catch {
+      eventHandler?(.didFail(code: "bridge_decode_failed", message: error.localizedDescription))
+    }
+  }
+
   private func send(_ command: YiTongHostCommand) {
     let encodedData: Data
 
@@ -450,6 +462,8 @@ extension YiTongWebViewHost: WKScriptMessageHandler {
         handleSelectionChanged(data)
       case YiTongBridgeIncomingType.annotationActivated.rawValue:
         handleAnnotationActivated(data)
+      case YiTongBridgeIncomingType.foldToggled.rawValue:
+        handleFoldToggled(data)
       default:
         break
       }

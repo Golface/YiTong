@@ -3,6 +3,7 @@ import {
   RENDERER_VERSION,
   type AnnotationActivatedPayload,
   type Envelope,
+  type FoldToggledPayload,
   type IncomingMessageType,
   type LineActivatedPayload,
   type OutgoingMessageType,
@@ -68,6 +69,10 @@ export function postSelectionChanged(payload: SelectionChangedPayload) {
 
 export function postAnnotationActivated(payload: AnnotationActivatedPayload) {
   postToNative("annotationActivated", payload);
+}
+
+export function postFoldToggled(payload: FoldToggledPayload) {
+  postToNative("foldToggled", payload);
 }
 
 export function installMessageReceiver(handler: IncomingHandler) {

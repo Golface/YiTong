@@ -256,6 +256,8 @@ struct ExampleContentView: View {
       return "didChangeSelection(nil)"
     case .didActivateAnnotation(let action):
       return "didActivateAnnotation(id: \(action.annotationID), action: \(action.action))"
+    case .didToggleFold(let fileIndex, let collapsed):
+      return "didToggleFold(fileIndex: \(fileIndex), collapsed: \(collapsed))"
     case .didFail(let error):
       return "didFail(\(error.code))"
     }

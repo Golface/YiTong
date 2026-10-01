@@ -279,4 +279,46 @@ final class YiTongTests: XCTestCase {
 
     XCTAssertNotNil(controller)
   }
+
+  func testRenderRequestMapsFoldsToBridgePayloads() {
+    let request = YiTongPublicModelAdapter.makeRenderRequest(
+      documentIdentifier: "document-folded",
+      document: DiffDocument(
+        patch: "diff --git a/a.txt b/a.txt",
+        folds: [
+          DiffFold(fileIndex: 0, collapsed: true, label: "L88–90 · +3 −3", detail: "R1 · docs", tone: "R1"),
+          DiffFold(fileIndex: 1, collapsed: false, label: "L10–24 · +12 −2"),
+        ]
+      ),
+      configuration: .default,
+      resolvedAppearance: .light
+    )
+
+    XCTAssertEqual(
+      request.document.folds,
+      [
+        YiTongBridgeFoldPayload(fileIndex: 0, collapsed: true, label: "L88–90 · +3 −3", detail: "R1 · docs", tone: "R1"),
+        YiTongBridgeFoldPayload(fileIndex: 1, collapsed: false, label: "L10–24 · +12 −2"),
+      ]
+    )
+  }
+
+  func testRenderRequestWithoutFoldsOmitsThem() {
+    let request = YiTongPublicModelAdapter.makeRenderRequest(
+      documentIdentifier: "document-plain",
+      document: DiffDocument(patch: "diff --git a/a.txt b/a.txt"),
+      configuration: .default,
+      resolvedAppearance: .light
+    )
+
+    XCTAssertNil(request.document.folds)
+  }
+
+  func testHostFoldToggledMapsToPublicDiffEvent() {
+    let event = YiTongPublicModelAdapter.makeDiffEvent(
+      from: .didToggleFold(YiTongFoldToggledPayload(fileIndex: 2, collapsed: false))
+    )
+
+    XCTAssertEqual(event, .didToggleFold(fileIndex: 2, collapsed: false))
+  }
 }

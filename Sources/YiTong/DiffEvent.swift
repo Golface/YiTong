@@ -6,6 +6,7 @@ public enum DiffEvent: Sendable, Equatable {
   case didClickLine(DiffLineReference)
   case didChangeSelection(DiffSelection?)
   case didActivateAnnotation(DiffAnnotationAction)
+  case didToggleFold(fileIndex: Int, collapsed: Bool)
   case didFail(DiffError)
 }
 

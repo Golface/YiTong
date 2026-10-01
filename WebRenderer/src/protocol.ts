@@ -6,7 +6,8 @@ export type OutgoingMessageType =
   | "renderStateChanged"
   | "lineActivated"
   | "selectionChanged"
-  | "annotationActivated";
+  | "annotationActivated"
+  | "foldToggled";
 export type IncomingMessageType =
   | "initialize"
   | "renderDocument"
@@ -63,6 +64,7 @@ export interface RenderDocumentPayload {
       oldContents: string;
       newContents: string;
     }>;
+    folds?: FoldPayload[];
   };
   configuration: RenderConfigurationPayload;
   annotations?: AnnotationPayload[];
@@ -83,6 +85,27 @@ export interface AnnotationPayload {
   kind?: string;
   html?: string;
   text?: string;
+}
+
+/**
+ * A collapsible header placed above one rendered file.
+ *
+ * A collapsed file is not rendered at all until the viewer expands it, so
+ * hosts can split a large patch into many small files and fold the trivial
+ * ones without paying for their highlighting. `tone` is opaque to the
+ * renderer and only exposed as `data-tone` for host styling.
+ */
+export interface FoldPayload {
+  fileIndex: number;
+  collapsed: boolean;
+  label: string;
+  detail?: string;
+  tone?: string;
+}
+
+export interface FoldToggledPayload {
+  fileIndex: number;
+  collapsed: boolean;
 }
 
 export interface UpdateAnnotationsPayload {
